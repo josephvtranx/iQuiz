@@ -1,27 +1,38 @@
+// QuizListViewController.swift
 import UIKit
-
-struct QuizTopic {
-    let title: String
-    let desc: String
-    let icon: UIImage?
-}
 
 final class QuizListViewController: UITableViewController {
 
-    private let topics: [QuizTopic] = [
-        QuizTopic(title: "Mathematics",
-                  desc: "Algebra, geometry, and quick math checks.",
-                  icon: UIImage(systemName: "function")),
-        QuizTopic(title: "Marvel Super Heroes",
-                  desc: "Characters, powers, and story trivia.",
-                  icon: UIImage(systemName: "bolt.fill")),
-        QuizTopic(title: "Science",
-                  desc: "Physics, chemistry, and basic biology.",
-                  icon: UIImage(systemName: "atom"))
+    private let quizzes: [Quiz] = [
+        Quiz(
+            title: "Mathematics",
+            desc: "Algebra, geometry, and quick math checks.",
+            questions: [
+                Question(text: "2 + 2 = ?", answers: ["3", "4", "5"], correctIndex: 1),
+                Question(text: "5 × 3 = ?", answers: ["15", "8", "10"], correctIndex: 0)
+            ]
+        ),
+        Quiz(
+            title: "Marvel Super Heroes",
+            desc: "Characters, powers, and story trivia.",
+            questions: [
+                Question(text: "Spider Man is from:", answers: ["DC", "Marvel"], correctIndex: 1),
+                Question(text: "Thor's weapon is:", answers: ["Mjolnir", "Shield", "Ring"], correctIndex: 0)
+            ]
+        ),
+        Quiz(
+            title: "Science",
+            desc: "Physics, chemistry, and basic biology.",
+            questions: [
+                Question(text: "Water's chemical formula is:", answers: ["H2O", "CO2", "NaCl"], correctIndex: 0),
+                Question(text: "The Earth orbits the:", answers: ["Moon", "Sun"], correctIndex: 1)
+            ]
+        )
     ]
 
     override func viewDidLoad() {
         super.viewDidLoad()
+
         title = "iQuiz"
         tableView.rowHeight = 72
 
@@ -43,22 +54,41 @@ final class QuizListViewController: UITableViewController {
         present(alert, animated: true)
     }
 
-    override func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
-        topics.count
+    override func numberOfSections(in tableView: UITableView) -> Int {
+        1
     }
 
-    override func tableView(_ tableView: UITableView,
-                            cellForRowAt indexPath: IndexPath) -> UITableViewCell {
+    override func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
+        quizzes.count
+    }
+
+    override func tableView(
+        _ tableView: UITableView,
+        cellForRowAt indexPath: IndexPath
+    ) -> UITableViewCell {
 
         let cell = tableView.dequeueReusableCell(withIdentifier: "TopicCell")
             ?? UITableViewCell(style: .subtitle, reuseIdentifier: "TopicCell")
 
-        let topic = topics[indexPath.row]
-        cell.textLabel?.text = topic.title
-        cell.detailTextLabel?.text = topic.desc
+        let quiz = quizzes[indexPath.row]
+        cell.textLabel?.text = quiz.title
+        cell.detailTextLabel?.text = quiz.desc
         cell.detailTextLabel?.textColor = .secondaryLabel
-        cell.imageView?.image = topic.icon
+        cell.imageView?.image = UIImage(systemName: "questionmark.circle")
         cell.imageView?.tintColor = .label
+        cell.accessoryType = .disclosureIndicator
+
         return cell
+    }
+
+    override func prepare(for segue: UIStoryboardSegue, sender: Any?) {
+        guard segue.identifier == "ListToQuestion" else { return }
+        guard let dest = segue.destination as? QuestionViewController else { return }
+        guard let cell = sender as? UITableViewCell else { return }
+        guard let indexPath = tableView.indexPath(for: cell) else { return }
+
+        dest.quiz = quizzes[indexPath.row]
+        dest.questionIndex = 0
+        dest.correctCount = 0
     }
 }
