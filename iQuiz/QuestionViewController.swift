@@ -40,6 +40,9 @@ final class QuestionViewController: UIViewController, UITableViewDataSource, UIT
         guard selectedIndex != nil else { return }
         performSegue(withIdentifier: "QuestionToAnswer", sender: self)
     }
+    @IBAction func didTapSettings(_ sender: Any) {
+        performSegue(withIdentifier: "ShowSettings", sender: nil)
+    }
 
     override func prepare(for segue: UIStoryboardSegue, sender: Any?) {
         guard segue.identifier == "QuestionToAnswer" else { return }
