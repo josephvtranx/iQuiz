@@ -2,7 +2,7 @@ import Foundation
 
 enum AppSettings {
     static let urlKey = "quiz_url"
-    static let defaultQuizURL = "http://tednewardsandbox.site44.com/questions.json"
+    static let defaultQuizURL = "https://tednewardsandbox.site44.com/questions.json"
 
     static var quizURLString: String {
         get { UserDefaults.standard.string(forKey: urlKey) ?? defaultQuizURL }

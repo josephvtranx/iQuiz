@@ -37,9 +37,35 @@ final class QuizService {
     }
 
     func fetchQuizzes(completion: @escaping (Result<[Quiz], Error>) -> Void) {
-        // Basic network check (required by rubric)
+
+        func decodeAndMap(_ data: Data) throws -> [Quiz] {
+            let decoded = try JSONDecoder().decode([NetworkQuiz].self, from: data)
+
+            return decoded.map { nq in
+                Quiz(
+                    title: nq.title,
+                    desc: nq.desc,
+                    questions: nq.questions.map { qq in
+                        let idx = qq.answers.firstIndex(of: qq.answer) ?? 0
+                        return Question(text: qq.text, answers: qq.answers, correctIndex: idx)
+                    }
+                )
+            }
+        }
+
+        func tryLoadCacheOrFail(_ originalError: Error) {
+            do {
+                let cached = try QuizCache.loadRawJSON()
+                let quizzes = try decodeAndMap(cached)
+                DispatchQueue.main.async { completion(.success(quizzes)) }
+            } catch {
+                DispatchQueue.main.async { completion(.failure(originalError)) }
+            }
+        }
+
+        // If no network, use cache immediately
         guard isNetworkAvailable else {
-            DispatchQueue.main.async { completion(.failure(FetchError.noNetwork)) }
+            tryLoadCacheOrFail(FetchError.noNetwork)
             return
         }
 
@@ -56,47 +82,41 @@ final class QuizService {
         request.timeoutInterval = 15
 
         URLSession.shared.dataTask(with: request) { data, response, error in
+            // Network error -> try cache
             if let error = error {
-                DispatchQueue.main.async { completion(.failure(error)) }
+                tryLoadCacheOrFail(error)
                 return
             }
 
+            // Bad HTTP status -> try cache
             if let http = response as? HTTPURLResponse {
                 print("STATUS:", http.statusCode)
                 guard (200...299).contains(http.statusCode) else {
-                    DispatchQueue.main.async { completion(.failure(FetchError.badStatus(http.statusCode))) }
+                    tryLoadCacheOrFail(FetchError.badStatus(http.statusCode))
                     return
                 }
             }
 
-            guard let data = data else {
-                DispatchQueue.main.async { completion(.failure(FetchError.emptyData)) }
+            // No data -> try cache
+            guard let data = data, !data.isEmpty else {
+                tryLoadCacheOrFail(FetchError.emptyData)
                 return
             }
 
             print("BYTES:", data.count)
 
             do {
-                let decoded = try JSONDecoder().decode([NetworkQuiz].self, from: data)
-                print("DECODED QUIZZES:", decoded.count)
+                // Save raw JSON for offline use
+                try QuizCache.save(rawJSON: data)
 
-                let quizzes: [Quiz] = decoded.map { nq in
-                    Quiz(
-                        title: nq.title,
-                        desc: nq.desc,
-                        questions: nq.questions.map { qq in
-                            let idx = qq.answers.firstIndex(of: qq.answer) ?? 0
-                            return Question(text: qq.text, answers: qq.answers, correctIndex: idx)
-                        }
-                    )
-                }
+                // Decode + map
+                let quizzes = try decodeAndMap(data)
 
-                print("MAPPED QUIZZES:", quizzes.count)
+                print("DECODED QUIZZES:", quizzes.count)
                 DispatchQueue.main.async { completion(.success(quizzes)) }
-
             } catch {
-                print("DECODE ERROR:", error)
-                DispatchQueue.main.async { completion(.failure(error)) }
+                // Decode/save error -> try cache
+                tryLoadCacheOrFail(error)
             }
         }.resume()
     }

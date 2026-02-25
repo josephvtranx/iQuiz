@@ -61,7 +61,9 @@ final class QuizListViewController: UITableViewController {
 
     // MARK: - Settings Button
     @IBAction func didTapSettings(_ sender: Any) {
-        performSegue(withIdentifier: "ShowSettings", sender: nil)
+        if let url = URL(string: UIApplication.openSettingsURLString) {
+            UIApplication.shared.open(url)
+        }
     }
 
     // MARK: - Table
